@@ -40,6 +40,7 @@ func main() {
 	userConns = make(map[string]*websocket.Conn)
 	userMsgs = make(map[string]UserMsgs)
 	router.Route("/ws", func(ws chi.Router) {
+		ws.Get("/alive", alive)
 		ws.Get("/read", ReadMsg)
 	})
 	httpPort := "8081"
@@ -51,6 +52,11 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
+func alive(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Here It is"))
+	log.Printf("here it is")
+	return
+}
 func ReadMsg(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("we go")
