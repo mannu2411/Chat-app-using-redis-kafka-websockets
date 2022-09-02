@@ -25,16 +25,12 @@ var userConns map[string]*websocket.Conn
 var userMsgs map[string]UserMsgs
 
 func runCronJobs() {
-	// 3
 	s := gocron.NewScheduler(time.UTC)
-
-	// 4
-	s.Every(2).Minute().Do(func() {
+	s.Every(30).Second().Do(func() {
 		//log.Printf("Running Cron Job..")
 		WaitQueueCron()
 	})
 
-	// 5
 	s.StartBlocking()
 }
 
@@ -43,8 +39,9 @@ func main() {
 	go runCronJobs()
 	userConns = make(map[string]*websocket.Conn)
 	userMsgs = make(map[string]UserMsgs)
-
-	router.Get("/read", ReadMsg)
+	router.Route("/ws", func(ws chi.Router) {
+		ws.Get("/read", ReadMsg)
+	})
 	httpPort := "8081"
 	log.Fatal(http.ListenAndServe(":"+httpPort, router))
 }
@@ -55,6 +52,8 @@ var upgrader = websocket.Upgrader{
 }
 
 func ReadMsg(w http.ResponseWriter, r *http.Request) {
+
+	log.Printf("we go")
 	conn, err := upgrader.Upgrade(w, r, nil) // error ignored for sake of simplicity
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
