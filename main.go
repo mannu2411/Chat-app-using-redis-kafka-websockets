@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -39,12 +40,15 @@ func main() {
 	go runCronJobs()
 	userConns = make(map[string]*websocket.Conn)
 	userMsgs = make(map[string]UserMsgs)
+	router.Route("/", func(ws chi.Router) {
+		ws.Get("/", alive)
+	})
 	router.Route("/ws", func(ws chi.Router) {
 		ws.Get("/alive", alive)
 		ws.Get("/read", ReadMsg)
 	})
-	httpPort := "8081"
-	log.Fatal(http.ListenAndServe(":"+httpPort, router))
+	port := os.Getenv("PORT")
+	log.Fatal(http.ListenAndServe(":"+port, router))
 }
 
 var upgrader = websocket.Upgrader{
