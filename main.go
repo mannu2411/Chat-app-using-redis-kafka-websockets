@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -28,7 +27,7 @@ var userMsgs map[string]UserMsgs
 func runCronJobs() {
 	s := gocron.NewScheduler(time.UTC)
 	s.Every(30).Second().Do(func() {
-		//log.Printf("Running Cron Job..")
+		log.Printf("Running Cron Job..")
 		WaitQueueCron()
 	})
 
@@ -44,7 +43,6 @@ func main() {
 		ws.Get("/", alive)
 	})
 	router.Route("/ws", func(ws chi.Router) {
-		ws.Get("/alive", alive)
 		ws.Get("/read", ReadMsg)
 	})
 	port := os.Getenv("PORT")
@@ -57,14 +55,14 @@ var upgrader = websocket.Upgrader{
 }
 
 func alive(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Here It is"))
-	log.Printf("here it is")
+	w.Write([]byte("<h4>Welcome to chatting app</h4>"))
+	log.Printf("Welcome to chatting app")
 	return
 }
-func ReadMsg(w http.ResponseWriter, r *http.Request) {
 
+func ReadMsg(w http.ResponseWriter, r *http.Request) {
 	log.Printf("we go")
-	conn, err := upgrader.Upgrade(w, r, nil) // error ignored for sake of simplicity
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -76,9 +74,6 @@ func ReadMsg(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return
 			}
-			//	sEnc := b64.StdEncoding.EncodeToString(msg)
-
-			//	fmt.Printf("%s Recieved: %s Endoded Message: %s \n", userConns[r.URL.Query().Get("in_id")].RemoteAddr(), string(msg), sEnc)
 			oid := r.URL.Query().Get("out_id")
 			out, ok := userConns[oid]
 			if ok {
@@ -86,12 +81,9 @@ func ReadMsg(w http.ResponseWriter, r *http.Request) {
 					mut := userMsgs[oid].mu
 					mut.Lock()
 					for _, msg := range userMsgs[oid].msgs {
-						//	sEnc := b64.StdEncoding.EncodeToString([]byte(msg.msg))
 						if err := out.WriteMessage(msg.msgType, []byte(msg.msg)); err != nil {
 							return
 						}
-						//		fmt.Printf("%s Send: %s Endoded Message: %s \n", out.RemoteAddr(), msg.msg, sEnc)
-
 					}
 					mut.Unlock()
 					delete(userMsgs, r.URL.Query().Get("out_id"))
@@ -122,16 +114,12 @@ func ReadMsg(w http.ResponseWriter, r *http.Request) {
 func WaitQueueCron() {
 	for key, ele := range userMsgs {
 		outUser, ok := userConns[key]
-		fmt.Printf("%v \n", key)
 		if ok {
 			ele.mu.Lock()
 			for _, msg := range ele.msgs {
-				//	sEnc := b64.StdEncoding.EncodeToString([]byte(msg.msg))
 				if err := outUser.WriteMessage(msg.msgType, []byte(msg.msg)); err != nil {
 					return
 				}
-				//	fmt.Printf("%s Send: %s Endoded Message: %s \n", outUser.RemoteAddr(), msg.msg, sEnc)
-
 			}
 			ele.mu.Unlock()
 			delete(userMsgs, key)
