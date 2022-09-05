@@ -26,7 +26,7 @@ var userMsgs map[string]UserMsgs
 
 func runCronJobs() {
 	s := gocron.NewScheduler(time.UTC)
-	s.Every(30).Second().Do(func() {
+	s.Every(10).Second().Do(func() {
 		log.Printf("Running Cron Job..")
 		WaitQueueCron()
 	})
@@ -61,63 +61,64 @@ func alive(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReadMsg(w http.ResponseWriter, r *http.Request) {
-	log.Printf("we go")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	userConns[r.URL.Query().Get("in_id")] = conn
-	go func() {
-		for {
-			msgType, msgs, err := userConns[r.URL.Query().Get("in_id")].ReadMessage()
-			if err != nil {
+	log.Printf("Here: %v and %v", conn.RemoteAddr(), r.URL.Query().Get("in_id"))
+	for {
+		msgType, msgs, err := userConns[r.URL.Query().Get("in_id")].ReadMessage()
+		if err != nil {
+			break
+		}
+		oid := r.URL.Query().Get("out_id")
+		_, ok := userConns[oid]
+		if ok {
+			if len(userMsgs[oid].msgs) > 0 {
+				mut := userMsgs[oid].mu
+				mut.Lock()
+				for _, msg := range userMsgs[oid].msgs {
+					if err := userConns[oid].WriteMessage(msg.msgType, []byte(msg.msg)); err != nil {
+						return
+					}
+				}
+				mut.Unlock()
+				delete(userMsgs, r.URL.Query().Get("out_id"))
+
+			}
+			if err := userConns[oid].WriteMessage(msgType, msgs); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			oid := r.URL.Query().Get("out_id")
-			out, ok := userConns[oid]
-			if ok {
-				if len(userMsgs[oid].msgs) > 0 {
-					mut := userMsgs[oid].mu
-					mut.Lock()
-					for _, msg := range userMsgs[oid].msgs {
-						if err := out.WriteMessage(msg.msgType, []byte(msg.msg)); err != nil {
-							return
-						}
-					}
-					mut.Unlock()
-					delete(userMsgs, r.URL.Query().Get("out_id"))
-
-				}
-				if err := out.WriteMessage(msgType, msgs); err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-			} else {
-				if ele, ok := userMsgs[oid]; !ok {
-					ele.msgs = make([]Msgs, 0)
-					ele.mu = sync.Mutex{}
-					userMsgs[oid] = ele
-				}
-				usrMsg := userMsgs[oid]
-				mut := usrMsg.mu
-				mut.Lock()
-				messges := userMsgs[oid].msgs
-				messges = append(messges, Msgs{msg: string(msgs), msgType: msgType})
-				usrMsg.msgs = messges
-				mut.Unlock()
-				userMsgs[oid] = usrMsg
+		} else {
+			if ele, ok := userMsgs[oid]; !ok {
+				ele.msgs = make([]Msgs, 0)
+				ele.mu = sync.Mutex{}
+				userMsgs[oid] = ele
 			}
+			usrMsg := userMsgs[oid]
+			mut := usrMsg.mu
+			mut.Lock()
+			messges := userMsgs[oid].msgs
+			messges = append(messges, Msgs{msg: string(msgs), msgType: msgType})
+			usrMsg.msgs = messges
+			mut.Unlock()
+			userMsgs[oid] = usrMsg
 		}
-	}()
+	}
+	delete(userConns, r.URL.Query().Get("in_id"))
+	log.Printf("user %v deleted", r.URL.Query().Get("in_id"))
 }
 func WaitQueueCron() {
 	for key, ele := range userMsgs {
-		outUser, ok := userConns[key]
+		_, ok := userConns[key]
 		if ok {
 			ele.mu.Lock()
 			for _, msg := range ele.msgs {
-				if err := outUser.WriteMessage(msg.msgType, []byte(msg.msg)); err != nil {
+				if err := userConns[key].WriteMessage(msg.msgType, []byte(msg.msg)); err != nil {
 					return
 				}
 			}
