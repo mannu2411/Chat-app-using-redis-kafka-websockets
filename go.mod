@@ -4,19 +4,15 @@ go 1.18
 
 require (
 	github.com/go-chi/chi v1.5.4
-	github.com/go-co-op/gocron v1.17.0
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/gorilla/websocket v1.5.0
+	github.com/segmentio/kafka-go v0.4.34
 )
 
 require (
-	github.com/kr/fs v0.1.0 // indirect
-	github.com/kr/pretty v0.3.0 // indirect
-	github.com/kr/text v0.2.0 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
-	github.com/rogpeppe/go-internal v1.6.1 // indirect
-	github.com/tools/godep v0.0.0-20180126220526-ce0bfadeb516 // indirect
-	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
-	golang.org/x/tools v0.1.12 // indirect
+	github.com/klauspost/compress v1.15.7 // indirect
+	github.com/onsi/ginkgo v1.16.5 // indirect
+	github.com/onsi/gomega v1.20.2 // indirect
+	github.com/pierrec/lz4/v4 v4.1.15 // indirect
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
 )
